@@ -1,0 +1,18 @@
+# OS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Dataset (too large for GitHub - download separately)
+archive/Indian Food Images/
+
+# Trained model weights (regenerate with: python train.py)
+v0.1.3/models/food_resnet18.pth
+
+# Uploads
+v0.1.3/uploads/*
+!v0.1.3/uploads/.gitkeep
+v0.1/uploads/*
+!v0.1/uploads/.gitkeep

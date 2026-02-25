@@ -1,0 +1,22 @@
+# NutriLens Local — Requirements
+# Core ML
+torch>=2.1.0
+torchvision>=0.16.0
+ultralytics>=8.0.0        # YOLOv8
+
+# Image processing
+Pillow>=10.0.0
+numpy>=1.24.0
+
+# Web framework
+flask>=3.0.0
+Werkzeug>=3.0.0
+
+# Optional: USDA API fallback
+requests>=2.31.0
+
+# Optional: environment config
+python-dotenv>=1.0.0
+
+# Training only (not needed to run the app)
+tqdm>=4.65.0

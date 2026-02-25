@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bhaat.AI v0.1.3 - Food Recognition</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Bhaat.AI</h1>
+            <p class="subtitle">Upload a food photo to identify it</p>
+            <p class="version">v0.1.3 &mdash; ResNet-18 + Indian Food Dataset</p>
+            {% if not has_model %}
+            <div class="warning-banner">
+                No trained model found. Run <code>python train.py</code> first.
+            </div>
+            {% endif %}
+        </header>
+
+        <div class="upload-section">
+            <form id="uploadForm" method="POST" action="/upload" enctype="multipart/form-data">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                    </div>
+                    <p class="upload-text">Drag and drop your food image here</p>
+                    <p class="upload-subtext">or</p>
+                    <label for="fileInput" class="upload-button">Browse Files</label>
+                    <input type="file" id="fileInput" name="image" accept="image/*" required hidden>
+                    <p class="file-types">Supported: JPG, PNG, JPEG</p>
+                </div>
+
+                <div class="preview-section" id="previewSection" style="display: none;">
+                    <img id="imagePreview" src="" alt="Preview">
+                    <div class="preview-actions">
+                        <button type="button" class="btn btn-secondary" onclick="resetUpload()">Change Image</button>
+                        <button type="submit" class="btn btn-primary" id="analyzeBtn">Upload & Recognize</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Loading spinner -->
+        <div id="loadingSection" class="loading-section" style="display: none;">
+            <div class="spinner"></div>
+            <p>Analyzing food image...</p>
+        </div>
+
+        <!-- Results -->
+        <div id="resultSection" class="result-section" style="display: none;">
+            <h2>Recognition Results</h2>
+            <div id="resultContent"></div>
+            <p class="result-note">Full results are also printed in the terminal.</p>
+            <button class="btn btn-secondary" onclick="resetUpload()" style="margin-top:15px;">
+                Try Another Image
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewSection = document.getElementById('previewSection');
+        const imagePreview = document.getElementById('imagePreview');
+        const uploadForm = document.getElementById('uploadForm');
+        const loadingSection = document.getElementById('loadingSection');
+        const resultSection = document.getElementById('resultSection');
+        const resultContent = document.getElementById('resultContent');
+
+        // File input change
+        fileInput.addEventListener('change', function(e) {
+            handleFile(e.target.files[0]);
+        });
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+        });
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                fileInput.files = e.dataTransfer.files;
+                handleFile(file);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                uploadArea.style.display = 'none';
+                previewSection.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function resetUpload() {
+            fileInput.value = '';
+            uploadArea.style.display = 'flex';
+            previewSection.style.display = 'none';
+            loadingSection.style.display = 'none';
+            resultSection.style.display = 'none';
+        }
+
+        // Form submit
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            previewSection.style.display = 'none';
+            loadingSection.style.display = 'block';
+            resultSection.style.display = 'none';
+
+            const formData = new FormData(uploadForm);
+            fetch('/upload', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(data => {
+                    loadingSection.style.display = 'none';
+                    if (data.success) {
+                        let html = '';
+                        if (data.predictions && data.predictions.length > 0) {
+                            html += '<table class="results-table">';
+                            html += '<tr><th>#</th><th>Food Item</th><th>Confidence</th></tr>';
+                            data.predictions.forEach(p => {
+                                const barWidth = Math.max(p.confidence, 2);
+                                html += `<tr>
+                                    <td>${p.rank}</td>
+                                    <td>${p.name}</td>
+                                    <td>
+                                        <div class="confidence-bar">
+                                            <div class="confidence-fill" style="width:${barWidth}%"></div>
+                                        </div>
+                                        <span class="confidence-text">${p.confidence}%</span>
+                                    </td>
+                                </tr>`;
+                            });
+                            html += '</table>';
+                        } else {
+                            html = '<p class="no-results">No model loaded. Train the model first with <code>python train.py</code></p>';
+                        }
+                        resultContent.innerHTML = html;
+                        resultSection.style.display = 'block';
+                    } else {
+                        alert('Error: ' + data.message);
+                        resetUpload();
+                    }
+                })
+                .catch(err => {
+                    loadingSection.style.display = 'none';
+                    alert('Upload error: ' + err.message);
+                    resetUpload();
+                });
+        });
+    </script>
+</body>
+</html>
