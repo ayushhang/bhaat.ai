@@ -6,7 +6,7 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #000000 0%, #000000 100%);
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -15,7 +15,7 @@ body {
 }
 
 .container {
-    background: white;
+    background: rgb(232, 232, 232);
     border-radius: 20px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     padding: 40px;
@@ -29,7 +29,7 @@ header {
 }
 
 h1 {
-    color: #667eea;
+    color: #000000;
     font-size: 2.5em;
     margin-bottom: 8px;
     font-weight: 700;
@@ -57,7 +57,7 @@ h1 {
 }
 
 .warning-banner code {
-    background: #ffeeba;
+    background: #ffe187;
     padding: 2px 6px;
     border-radius: 4px;
 }
@@ -68,11 +68,11 @@ h1 {
 }
 
 .upload-area {
-    border: 3px dashed #667eea;
+    border: 3px dashed #a2a4ae;
     border-radius: 15px;
     padding: 60px 40px;
     text-align: center;
-    background: #f8f9ff;
+    background: rgb(223, 223, 223);
     transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
@@ -81,12 +81,12 @@ h1 {
 }
 
 .upload-area:hover {
-    border-color: #764ba2;
+    border-color: #000000;
     background: #f0f2ff;
 }
 
 .upload-area.drag-over {
-    border-color: #764ba2;
+    border-color: #000000;
     background: #e8ebff;
     transform: scale(1.02);
 }
@@ -110,7 +110,7 @@ h1 {
 }
 
 .upload-button {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #667eea 0%, #8b66ea 100%);
     color: white;
     padding: 12px 30px;
     border-radius: 25px;
@@ -260,7 +260,7 @@ h1 {
 }
 
 .confidence-fill {
-    background: linear-gradient(90deg, #667eea, #764ba2);
+    background: linear-gradient(90deg, #000000, #000000);
     height: 100%;
     border-radius: 10px;
     transition: width 0.4s ease;

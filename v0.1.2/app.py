@@ -239,3 +239,4 @@ if __name__ == "__main__":
     logger.info("Starting NutriLens Local on http://localhost:5000")
     logger.info("Pipeline: YOLOv8 + EfficientNet-B4 (Food-101) — NO external API calls")
     app.run(debug=False, port=5000)
+    

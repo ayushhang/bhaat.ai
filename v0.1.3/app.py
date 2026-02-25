@@ -15,13 +15,18 @@ Usage:
 """
 
 import os
+import sys
+import traceback
 from datetime import datetime
 
 from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
-from PIL import Image
+from werkzeug.exceptions import RequestEntityTooLarge
 
-from model import load_trained_model, predict, TRANSFORM
+from model import load_trained_model, predict
+
+# Ensure print() output appears immediately in terminal
+sys.stdout.reconfigure(line_buffering=True)
 
 # ---------------------------------------------------------------------------
 # Flask setup
@@ -36,6 +41,20 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = MAX_FILE_SIZE
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
+# ---------------------------------------------------------------------------
+# Error handlers — always return JSON so the frontend can parse it
+# ---------------------------------------------------------------------------
+@app.errorhandler(413)
+@app.errorhandler(RequestEntityTooLarge)
+def file_too_large(e):
+    return jsonify({"success": False, "message": "File too large. Max size is 16 MB."}), 413
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    return jsonify({"success": False, "message": "Server error. Check the terminal for details."}), 500
 
 # ---------------------------------------------------------------------------
 # Load model at startup
@@ -77,64 +96,75 @@ def index():
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
-    # Validate request
-    if "image" not in request.files:
-        return jsonify({"success": False, "message": "No file in request"}), 400
+    try:
+        # Validate request
+        if "image" not in request.files:
+            return jsonify({"success": False, "message": "No file in request"}), 400
 
-    file = request.files["image"]
-    if file.filename == "":
-        return jsonify({"success": False, "message": "No file selected"}), 400
+        file = request.files["image"]
+        if file.filename == "":
+            return jsonify({"success": False, "message": "No file selected"}), 400
 
-    if not allowed_file(file.filename):
-        return jsonify({"success": False, "message": "File type not allowed. Use JPG or PNG."}), 400
+        if not allowed_file(file.filename):
+            return jsonify({"success": False, "message": "File type not allowed. Use JPG or PNG."}), 400
 
-    # Save file
-    original = secure_filename(file.filename)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    name, ext = os.path.splitext(original)
-    filename = f"{name}_{timestamp}{ext}"
-    filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-    file.save(filepath)
+        # Save file
+        original = secure_filename(file.filename)
+        if not original:
+            original = "upload.jpg"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        name, ext = os.path.splitext(original)
+        if not ext:
+            ext = ".jpg"
+        filename = f"{name}_{timestamp}{ext}"
+        filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+        file.save(filepath)
 
-    file_size = os.path.getsize(filepath)
+        file_size = os.path.getsize(filepath)
 
-    # ----- Print to terminal -----
-    print("\n" + "=" * 60)
-    print(f"  NEW UPLOAD: {filename}")
-    print(f"  Size: {format_size(file_size)}")
-    print(f"  Saved to: {filepath}")
-    print("=" * 60)
+        # ----- Print to terminal -----
+        print("\n" + "=" * 60)
+        print(f"  NEW UPLOAD: {filename}")
+        print(f"  Size: {format_size(file_size)}")
+        print(f"  Saved to: {filepath}")
+        print("=" * 60)
 
-    # ----- Run food recognition -----
-    predictions = []
-    if model is not None:
-        try:
-            results = predict(filepath, model, class_names)
+        # ----- Run food recognition -----
+        predictions = []
+        if model is not None:
+            try:
+                results = predict(filepath, model, class_names)
 
-            print("\n  FOOD RECOGNITION RESULTS:")
-            print("  " + "-" * 40)
-            for rank, (food_name, confidence) in enumerate(results, 1):
-                print(f"  {rank}. {food_name} — {confidence}% confidence")
-                predictions.append({
-                    "rank": rank,
-                    "name": food_name,
-                    "confidence": confidence,
-                })
-            print("  " + "-" * 40)
+                print("\n  FOOD RECOGNITION RESULTS:")
+                print("  " + "-" * 40)
+                for rank, (food_name, confidence) in enumerate(results, 1):
+                    print(f"  {rank}. {food_name} — {confidence}% confidence")
+                    predictions.append({
+                        "rank": rank,
+                        "name": food_name,
+                        "confidence": confidence,
+                    })
+                print("  " + "-" * 40)
+                print()
+            except Exception as e:
+                print(f"  ERROR during recognition: {e}")
+                traceback.print_exc()
+        else:
+            print("  [SKIPPED] No model loaded — run 'python train.py' first")
             print()
-        except Exception as e:
-            print(f"  ERROR during recognition: {e}")
-    else:
-        print("  [SKIPPED] No model loaded — run 'python train.py' first")
-        print()
 
-    return jsonify({
-        "success": True,
-        "message": "File uploaded and processed",
-        "filename": filename,
-        "size": format_size(file_size),
-        "predictions": predictions,
-    }), 200
+        return jsonify({
+            "success": True,
+            "message": "File uploaded and processed",
+            "filename": filename,
+            "size": format_size(file_size),
+            "predictions": predictions,
+        }), 200
+
+    except Exception as e:
+        print(f"  UPLOAD ERROR: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "message": f"Upload failed: {str(e)}"}), 500
 
 
 # ---------------------------------------------------------------------------
@@ -143,4 +173,4 @@ def upload_file():
 if __name__ == "__main__":
     print("\n  Bhaat.AI v0.1.3")
     print("  http://localhost:8000\n")
-    app.run(host="0.0.0.0", port=8000, debug=True)
+    app.run(host="0.0.0.0", port=8000, debug=False)

@@ -125,7 +125,21 @@
 
             const formData = new FormData(uploadForm);
             fetch('/upload', { method: 'POST', body: formData })
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok && r.status === 413) {
+                        throw new Error('File too large. Max size is 16 MB.');
+                    }
+                    return r.text();
+                })
+                .then(text => {
+                    if (!text) throw new Error('Empty response from server.');
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('Server response:', text);
+                        throw new Error('Server returned an invalid response. Check the terminal.');
+                    }
+                })
                 .then(data => {
                     loadingSection.style.display = 'none';
                     if (data.success) {
